@@ -1,0 +1,17 @@
+{
+  "name": "lp-take-home-project",
+  "version": "1.0.0",
+  "description": "",
+  "main": "bank",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "./bank"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+  }
+}
