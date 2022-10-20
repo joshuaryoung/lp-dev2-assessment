@@ -45,7 +45,7 @@ As a customer, while the bank is closed, I enter `Hello?` into the prompt. My sc
 I open a third terminal ("Teller1"), run `./teller`. The screen displays:
 
 	Good Morning.
-	You are not serving	any customers.
+	You are not serving any customers.
 	You have 2 customers waiting in line.
 
 	LP Bank>
@@ -182,12 +182,12 @@ The teller screen adds a private message to the chat log.
 
 	[ CHAT ]
 	- (you)        What can I help you with?
-	- (Customer 1) Please withdraw $50
-	- [ WITHDRAWAL MADE: $50 ]
+	- (Customer 1) Please withdraw $55
+	- [ WITHDRAWAL MADE: $55 ]
 
 	[ CUSTOMER ACCOUNT ]
 	Status: Active
-	Balance: $100
+	Balance: $45
 
 	LP Bank>
 
@@ -227,14 +227,14 @@ As a customer, at any time, if I attempt to withdraw more than I have in my acco
 
 ### 11
 
-As a teller, if a customer attempts to over-draft the account, a private warning is inserted in the chat log.
+As a teller, if a customer attempts to over-draft the account, a private warning is inserted in the chat log. The transaction is automatically denied, and I am not prompted to approve.
 
 	You are serving customer #1.
 	You have 1 customer waiting in line.
 
 	[ CHAT ]
 	- (you)        What can I help you with?
-	- (Customer 1) Please withdraw $50
+	- (Customer 1) Please withdraw $5,000,000
 	- [ WARNING: Denied overdraft. Attempted withdrawal: $5,000,000 ]
 
 	[ CUSTOMER ACCOUNT ]
