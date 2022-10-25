@@ -13,7 +13,30 @@ Deliver a system that fulfills the user stories below. Please send us your proje
 
 If you have any questions, don't hesitate to ask! Email: shane.kuester@logicalposition.com
 
+------------------------------------
+## Instructions for Windows
 
+The user stories below assume they are running in a linux / Mac environment. When you see something like "run `./bank`" in the instructions below, you will have to substitute that with a command which runs the script in a Docker container.
+
+### Summary
+
+- Instead of `./SCRIPT_NAME`, you will use `docker run --rm -it -v %cd%:/lp -w /lp node:18 SCRIPT_NAME`
+
+### Setup
+1. Install [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
+2. `cd` into this lp-dev2-assessment directory. The commands below assume this repo is your working directory.
+
+### Command Prompt Example
+- `docker run --rm -it -v %cd%:/lp -w /lp node:18 bank`
+- `docker run --rm -it -v %cd%:/lp -w /lp node:18 customer`
+- `docker run --rm -it -v %cd%:/lp -w /lp node:18 teller`
+
+### Power Shell Example
+- `docker run --rm -it -v ${PWD}:/lp -w /lp node:18 bank`
+- `docker run --rm -it -v ${PWD}:/lp -w /lp node:18 customer`
+- `docker run --rm -it -v ${PWD}:/lp -w /lp node:18 teller`
+
+------------------------------------
 
 # User Stories
 
