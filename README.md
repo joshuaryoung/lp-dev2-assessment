@@ -11,7 +11,7 @@ Deliver a system that fulfills the user stories below. Please send us your proje
 - Run `./bank` to start the banking server
 
 
-If you have any questions, don't hestiate to ask! Email: shane.kuester@logicalposition.com
+If you have any questions, don't hesitate to ask! Email: shane.kuester@logicalposition.com
 
 
 
