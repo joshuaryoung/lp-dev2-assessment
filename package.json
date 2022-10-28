@@ -8,10 +8,14 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "./bank"
+    "start": "nodemon bank.js",
+    "bank": "nodemon bank.js",
+    "customer": "nodemon customer.js",
+    "teller": "nodemon teller.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "nodemon": "^2.0.20"
   }
 }
