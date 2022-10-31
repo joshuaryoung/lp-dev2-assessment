@@ -16,22 +16,11 @@ const server = net.createServer(conn => {
 
 	server_handle_message(conn, ({ header, message }) => {
     if (isHandshakeMessage(message)) {
-      switch (header.type) {
-        case 'customer':
-          connectedCustomers.push(header)
-          break;
-      
-        case 'teller':
-          connectedTellers.push(header)
-          break;
-
-        default:
-          throw new Error('Unknown client type specified in header!')
-      }
-      console.log({ connectedCustomers, connectedTellers })
+      handle_handshake(header)
       return
     }
-		server_send_message(conn, `I, the Bank, received: ${message}`)
+    console.log({ message, header })
+		server_send_message(conn, `The bank is ${connectedTellers.length ? 'open' : 'closed'}.`)
 	})
 
 
@@ -39,6 +28,30 @@ const server = net.createServer(conn => {
 		console.log('client disconnected')
 	})
 })
+
+function handle_handshake(header) {
+  switch (header.type) {
+    case 'customer':
+      const newCustomer = {
+        ...header,
+        balance: 100
+      }
+      connectedCustomers.push(newCustomer)
+      break;
+  
+    case 'teller':
+      const newTeller = {
+        ...header,
+        currentCustomer: {}
+      }
+      connectedTellers.push(newTeller)
+      break;
+
+    default:
+      throw new Error('Unknown client type specified in header!')
+  }
+  console.log({ connectedCustomers, connectedTellers })
+}
 
 
 
