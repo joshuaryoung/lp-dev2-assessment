@@ -55,7 +55,7 @@ handle_message(conn, message => {
 	]
 
   let place_text = ['']
-  if (place_in_line != -1) {
+  if (bank_is_open && place_in_line != -1) {
     switch (true) {
       case place_in_line === 0:
         place_text = ['You are the next customer to be served.', '']
@@ -72,8 +72,8 @@ handle_message(conn, message => {
       default:
         break;
     }
-    screen.push(...place_text)
   }
+  screen.push(...place_text)
   if (message_to_display) {
     screen.push(`[ SYSTEM ] ${message_to_display}`, '')
   }

@@ -19,8 +19,17 @@ const server = net.createServer(conn => {
       handle_handshake(header, conn)
       return
     }
-    // console.log({ message, header })
-		server_send_message(conn, `The bank is ${connectedTellers.length ? 'open' : 'closed'}.`)
+
+    const isCustomer = header.type === 'customer'
+    let user
+    if (isCustomer) {
+      // user = connectedCustomers.find(cust => cust.clientId === header.clientId)
+      processCustomerMessage(conn, header, message)
+    } else {
+      // user = connectedTellers.find(tell => tell.clientId === header.clientId)
+    }
+    // console.log({ header })
+		// server_send_message(conn, `The bank is ${connectedTellers.length ? 'open' : 'closed'}.`)
 	})
 
 
@@ -53,7 +62,7 @@ function handle_handshake(header, conn) {
       const newTeller = {
         ...header,
         conn,
-        currentCustomers: {},
+        currentCustomer: {},
         chat_log: []
       }
       connectedTellers.push(newTeller)
@@ -118,4 +127,21 @@ function send_update_to_teller(conn, customers_waiting = null, chat_log = null) 
   const stringified_payload = JSON.stringify(payload)
   console.log({ stringified_payload })
   server_send_message(conn, `{ "type": "update", "payload": ${stringified_payload} }`)
+}
+
+function processCustomerMessage(conn, { clientId }, message, user) {
+  const isBeingServed = connectedTellers.find(tell => tell.currentCustomer.clientId === clientId)
+  const bank_is_open = connectedTellers.length > 0
+
+  if (!bank_is_open) {
+    server_send_message(conn, 'The bank is closed.')
+    return
+  }
+
+  if (isBeingServed) {
+    // future logic
+    return
+  }
+
+  server_send_message(conn, 'You are not currently being served.')
 }
