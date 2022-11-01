@@ -16,10 +16,10 @@ const server = net.createServer(conn => {
 
 	server_handle_message(conn, ({ header, message }) => {
     if (isHandshakeMessage(message)) {
-      handle_handshake(header)
+      handle_handshake(header, conn)
       return
     }
-    console.log({ message, header })
+    // console.log({ message, header })
 		server_send_message(conn, `The bank is ${connectedTellers.length ? 'open' : 'closed'}.`)
 	})
 
@@ -29,28 +29,43 @@ const server = net.createServer(conn => {
 	})
 })
 
-function handle_handshake(header) {
+function handle_handshake(header, conn) {
   switch (header.type) {
     case 'customer':
       const newCustomer = {
         ...header,
-        balance: 100
+        conn,
+        account: {
+          balance: 100,
+          status: 'Active'
+        },
+        currentTeller: {},
+        chat_log: []
       }
       connectedCustomers.push(newCustomer)
+      const place_in_line = connectedCustomers.findIndex(el => el.clientId === header.clientId)
+      const { chat_log } = newCustomer
+      send_update_to_customer(conn, place_in_line, chat_log)
+      connectedTellers.forEach(el => send_update_to_teller(el.conn, connectedCustomers))
       break;
   
     case 'teller':
       const newTeller = {
         ...header,
-        currentCustomer: {}
+        conn,
+        currentCustomers: {},
+        chat_log: []
       }
       connectedTellers.push(newTeller)
+      connectedCustomers.forEach(el => send_update_to_customer(el.conn))
+      send_update_to_teller(conn, connectedCustomers, newTeller.chat_log)
+
       break;
 
     default:
       throw new Error('Unknown client type specified in header!')
   }
-  console.log({ connectedCustomers, connectedTellers })
+  // console.log({ connectedCustomers, connectedTellers })
 }
 
 
@@ -82,4 +97,25 @@ function shutdown() {
 
 function send_id(conn) {
   server_send_message(conn, `{ "type": "handshake", "id": "${conn.id}" }`)
+}
+
+function send_update_to_customer(conn, place_in_line = -1, chat_log = null) {
+  const bank_is_open = connectedTellers.length > 0
+  const payload = {
+    bank_is_open,
+    place_in_line,
+    chat_log
+  }
+  const stringified_payload = JSON.stringify(payload)
+  server_send_message(conn, `{ "type": "update", "payload": ${stringified_payload} }`)
+}
+
+function send_update_to_teller(conn, customers_waiting = null, chat_log = null) {
+  const payload = {
+    customers_waiting: customers_waiting.map(cust => cust.clientId),
+    chat_log
+  }
+  const stringified_payload = JSON.stringify(payload)
+  console.log({ stringified_payload })
+  server_send_message(conn, `{ "type": "update", "payload": ${stringified_payload} }`)
 }

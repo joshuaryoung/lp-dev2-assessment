@@ -2,10 +2,13 @@
 
 const { randomUUID } = require('crypto')
 const net = require('net')
-const { render, handle_input, handle_message, client_send_message, red, isHandshakeMessage } = require('./lib/helpers')
+const { render, handle_input, handle_message, client_send_message, red, isHandshakeMessage, handle_handshake, isUpdateMessage, handle_update, green } = require('./lib/helpers')
 const conn = net.createConnection('./bank.sock')
 const clientId = randomUUID()
 let bank_is_open = false
+let chat_log
+let place_in_line = -1
+let being_serverd = false
 
 function connection_ready() {
   render([
@@ -30,33 +33,52 @@ handle_input(line => {
 
 
 handle_message(conn, message => {
+  let message_to_display = message
   if (message && typeof message === 'string' && isHandshakeMessage(message)) {
-    handle_handshake(conn, message)
+    handle_handshake(conn, message, createHeader)
     return
-  }
-
-  render([
-    `The Bank is ${bank_is_open ? 'open' : red('closed')}.`,
-    '',
-    `[ SYSTEM ] ${message}`,
-    ''
-	])
-})
-
-function handle_handshake(conn, message) {
-  try {
-    const jsonObj = JSON.parse(message)
-    if (typeof jsonObj === 'object') {
-      const { id } = jsonObj
-      conn.id = id
-      const _message = `{ "type": "handshake", "id": "${conn.id}" }`
-      const messageHeader = createHeader()
-
-      client_send_message(conn, _message, messageHeader)
+  } else if (message && typeof message === 'string' && isUpdateMessage(message)) {
+    const { payload } = handle_update(message) || { payload: {} }
+    bank_is_open = payload.bank_is_open
+    if (payload.chat_log != null && payload.chat_log != undefined) {
+      chat_log = payload.chat_log
     }
-  } catch (error) {
+    if (payload.place_in_line != -1) {
+      place_in_line = payload.place_in_line
+    }
+    
+    message_to_display = ''
   }
-}
+
+  const screen = [
+    `The Bank is ${bank_is_open ? green('open') : red('closed')}.`
+	]
+
+  let place_text = ['']
+  if (place_in_line != -1) {
+    switch (true) {
+      case place_in_line === 0:
+        place_text = ['You are the next customer to be served.', '']
+        break;
+    
+      case place_in_line === 1:
+        place_text = ['There is 1 customer in line ahead of you.', '']
+        break;
+    
+      case place_in_line > 1:
+        place_text = [`There are ${place_in_line} customers in line ahead of you.`, '']
+        break;
+    
+      default:
+        break;
+    }
+    screen.push(...place_text)
+  }
+  if (message_to_display) {
+    screen.push(`[ SYSTEM ] ${message_to_display}`, '')
+  }
+  render(screen)
+})
 
 
 
