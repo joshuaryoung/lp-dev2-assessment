@@ -2,13 +2,13 @@
 
 const { randomUUID } = require('crypto')
 const net = require('net')
-const { render, handle_input, handle_message, client_send_message, red, isHandshakeMessage, handle_handshake, isUpdateMessage, parse_json, green } = require('./lib/helpers')
+const { render, handle_input, handle_message, client_send_message, red, isHandshakeMessage, handle_handshake, isUpdateMessage, parse_json, green, parseChatLog } = require('./lib/helpers')
 const conn = net.createConnection('./bank.sock')
 const clientId = randomUUID()
 let bank_is_open = false
 let chat_log
 let place_in_line = -1
-let being_serverd = false
+let being_served_by = null
 
 function connection_ready() {
   render([
@@ -43,6 +43,9 @@ handle_message(conn, message => {
     if (payload.chat_log != null && payload.chat_log != undefined) {
       chat_log = payload.chat_log
     }
+    if (payload.served_by != null && payload.served_by != undefined) {
+      being_served_by = payload.served_by
+    }
     if (payload.place_in_line != -1) {
       place_in_line = payload.place_in_line
     }
@@ -58,7 +61,7 @@ handle_message(conn, message => {
   if (bank_is_open && place_in_line != -1) {
     switch (true) {
       case place_in_line === 0:
-        place_text = ['You are the next customer to be served.', '']
+        place_text = [ being_served_by ? `Teller #${being_served_by.slice(-4)} is now serving you!` : 'You are the next customer to be served.', '']
         break;
     
       case place_in_line === 1:
@@ -76,6 +79,10 @@ handle_message(conn, message => {
   screen.push(...place_text)
   if (message_to_display) {
     screen.push(`[ SYSTEM ] ${message_to_display}`, '')
+  }
+  if (chat_log && chat_log.length) {
+    const parsedChatLog = parseChatLog(chat_log, conn.id, 'Teller')
+    screen.push(...parsedChatLog, '')
   }
   render(screen)
 })

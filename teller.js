@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const net = require('net')
-const { render, handle_input, handle_message, handle_handshake, isHandshakeMessage, client_send_message, parse_json, isUpdateMessage, isServerMessage } = require('./lib/helpers')
+const { render, handle_input, handle_message, handle_handshake, isHandshakeMessage, client_send_message, parse_json, isUpdateMessage, isServerMessage, parseChatLog } = require('./lib/helpers')
 const conn = net.createConnection('./bank.sock')
 let currently_serving = 0
 let currently_waiting = []
@@ -31,8 +31,8 @@ handle_message(conn, message => {
     handle_handshake(conn, message, createHeader)
     return
   } else if (message && typeof message === 'string' && isUpdateMessage(message)) {
+    debugger
     const { payload } = parse_json(message) || { payload: {} }
-    
     if (payload.chat_log != null && payload.chat_log != undefined) {
       current_chat_log = payload.chat_log
     }
@@ -40,7 +40,6 @@ handle_message(conn, message => {
       currently_waiting = payload.customers_waiting
     }
     if (payload.currentCustomer != null && payload.currentCustomer != undefined) {
-      debugger
       currently_serving = payload.currentCustomer
     }
     
@@ -56,16 +55,16 @@ handle_message(conn, message => {
 	]
 
   if (current_chat_log.length) {
-    const parsedChatLog = current_chat_log.map(log => {
-      const { clientId, message } = log || {}
-      const isMe = conn.clientId === clientId
-      const name = isMe ? 'you' : `${clientId.slice(-4)}`
-      
-      return `- (${name}) ${message}`
-    })
+    const parsedChatLog = parseChatLog(current_chat_log, conn.id, 'Customer')
     screen.push('[ CHAT ]', ...parsedChatLog, '')
   }
-  // if ()
+  if (currently_serving) {
+    const { account } = currently_serving
+    const headerLine = '[ CUSTOMER ACCOUNT ]'
+    const parsedStatus = `Status: ${account.status}`
+    const parsedBalance = `Balance: $${account.balance}`
+    screen.push(headerLine, parsedStatus, parsedBalance, '')
+  }
 
 	render(screen)
 	// console.log('Message received:', message)
@@ -103,7 +102,7 @@ function createHeader () {
 
 function render_teller_header_info() {
   return [
-    currently_serving > 0 ? `You` : 'You are not serving any customers.',
+    currently_serving ? `You are serving customer #${currently_serving.clientId.slice(-4)}` : 'You are not serving any customers.',
     `You have ${currently_waiting.length} customers waiting in line.`,
     ''
   ]

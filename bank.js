@@ -110,12 +110,13 @@ function send_id(conn) {
   server_send_message(conn, `{ "type": "handshake", "id": "${conn.id}" }`)
 }
 
-function send_update_to_customer(conn, place_in_line = -1, chat_log = null) {
+function send_update_to_customer(conn, place_in_line = -1, chat_log = null, served_by = null) {
   const bank_is_open = connectedTellers.length > 0
   const payload = {
     bank_is_open,
     place_in_line,
-    chat_log
+    chat_log,
+    served_by
   }
   const stringified_payload = JSON.stringify(payload)
   server_send_message(conn, `{ "type": "update", "payload": ${stringified_payload} }`)
@@ -166,11 +167,13 @@ function handleTellerNext(teller) {
     return
   }
 
-  const nextCustomer = waitingCustomers[0]
-  customersBeingServed.push(waitingCustomers.pop())
+  const nextCustomer = waitingCustomers.shift()
+  customersBeingServed.push(nextCustomer)
+  teller.currentCustomer = nextCustomer
+  send_update_to_teller(teller.conn, waitingCustomers, null, teller.currentCustomer)
+  send_update_to_customer(nextCustomer.conn, -1, null, teller.clientId)
   debugger
-  teller.nextCustomer = nextCustomer
-  send_update_to_teller(teller.conn, null, null, teller.nextCustomer)
+  waitingCustomers.forEach((cust, index) => send_update_to_customer(cust.conn, index, null, null))
   const chatMessage = {message: 'What can I help you with?', sender: teller.clientId}
   sendChatMessage(nextCustomer, teller, chatMessage)
   // show [ CUSTOMER ACCOUNT ] section
