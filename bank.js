@@ -5,7 +5,8 @@ const net = require('net')
 const { server_handle_message, server_send_message, isHandshakeMessage } = require('./lib/helpers')
 const SOCKET = "./bank.sock"
 
-const connectedCustomers = []
+const waitingCustomers = []
+const customersBeingServed = []
 const connectedTellers = []
 
 // TCP Server using a Unix socket
@@ -23,10 +24,11 @@ const server = net.createServer(conn => {
     const isCustomer = header.type === 'customer'
     let user
     if (isCustomer) {
-      // user = connectedCustomers.find(cust => cust.clientId === header.clientId)
+      // user = waitingCustomers.find(cust => cust.clientId === header.clientId)
       processCustomerMessage(conn, header, message)
     } else {
-      // user = connectedTellers.find(tell => tell.clientId === header.clientId)
+      user = connectedTellers.find(tell => tell.clientId === header.clientId)
+      processTellerMessage(conn, header, message, user)
     }
     // console.log({ header })
 		// server_send_message(conn, `The bank is ${connectedTellers.length ? 'open' : 'closed'}.`)
@@ -48,33 +50,33 @@ function handle_handshake(header, conn) {
           balance: 100,
           status: 'Active'
         },
-        currentTeller: {},
+        currentTeller: null,
         chat_log: []
       }
-      connectedCustomers.push(newCustomer)
-      const place_in_line = connectedCustomers.findIndex(el => el.clientId === header.clientId)
+      waitingCustomers.push(newCustomer)
+      const place_in_line = waitingCustomers.findIndex(el => el.clientId === header.clientId)
       const { chat_log } = newCustomer
       send_update_to_customer(conn, place_in_line, chat_log)
-      connectedTellers.forEach(el => send_update_to_teller(el.conn, connectedCustomers))
+      connectedTellers.forEach(el => send_update_to_teller(el.conn, waitingCustomers))
       break;
   
     case 'teller':
       const newTeller = {
         ...header,
         conn,
-        currentCustomer: {},
+        currentCustomer: null,
         chat_log: []
       }
       connectedTellers.push(newTeller)
-      connectedCustomers.forEach(el => send_update_to_customer(el.conn))
-      send_update_to_teller(conn, connectedCustomers, newTeller.chat_log)
+      waitingCustomers.forEach(el => send_update_to_customer(el.conn))
+      send_update_to_teller(conn, waitingCustomers, newTeller.chat_log)
 
       break;
 
     default:
       throw new Error('Unknown client type specified in header!')
   }
-  // console.log({ connectedCustomers, connectedTellers })
+  // console.log({ waitingCustomers, connectedTellers })
 }
 
 
@@ -119,13 +121,13 @@ function send_update_to_customer(conn, place_in_line = -1, chat_log = null) {
   server_send_message(conn, `{ "type": "update", "payload": ${stringified_payload} }`)
 }
 
-function send_update_to_teller(conn, customers_waiting = null, chat_log = null) {
+function send_update_to_teller(conn, customers_waiting = null, chat_log = null, currentCustomer = null) {
   const payload = {
-    customers_waiting: customers_waiting.map(cust => cust.clientId),
-    chat_log
+    customers_waiting: customers_waiting && customers_waiting.map(cust => cust.clientId),
+    chat_log,
+    currentCustomer
   }
   const stringified_payload = JSON.stringify(payload)
-  console.log({ stringified_payload })
   server_send_message(conn, `{ "type": "update", "payload": ${stringified_payload} }`)
 }
 
@@ -144,4 +146,42 @@ function processCustomerMessage(conn, { clientId }, message, user) {
   }
 
   server_send_message(conn, 'You are not currently being served.')
+}
+
+function processTellerMessage(conn, header, message, teller) {
+  if (typeof message != 'string') {
+    throw new error('Message param of type \'string\' not provided!')
+  }
+  const tellerIsAvailable = !Boolean(teller.currentCustomer)
+  const isNextCommand = message.toLowerCase() === 'next'
+
+  if (tellerIsAvailable && isNextCommand) {
+    handleTellerNext(teller)
+  }
+}
+
+function handleTellerNext(teller) {
+  if (!waitingCustomers || !waitingCustomers.length) {
+    server_send_message(conn, '{ "type": "server_message", "message": "There are no customers waiting!"')
+    return
+  }
+
+  const nextCustomer = waitingCustomers[0]
+  customersBeingServed.push(waitingCustomers.pop())
+  debugger
+  teller.nextCustomer = nextCustomer
+  send_update_to_teller(teller.conn, null, null, teller.nextCustomer)
+  const chatMessage = {message: 'What can I help you with?', sender: teller.clientId}
+  sendChatMessage(nextCustomer, teller, chatMessage)
+  // show [ CUSTOMER ACCOUNT ] section
+}
+
+function sendChatMessage(customer, teller, message) {
+  // update chat log on customer
+  debugger
+  customer.chat_log.push(message)
+  // send update to customer
+  send_update_to_customer(customer.conn, -1, customer.chat_log)
+  // send update to teller
+  send_update_to_teller(teller.conn, null, customer.chat_log)
 }

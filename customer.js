@@ -2,7 +2,7 @@
 
 const { randomUUID } = require('crypto')
 const net = require('net')
-const { render, handle_input, handle_message, client_send_message, red, isHandshakeMessage, handle_handshake, isUpdateMessage, handle_update, green } = require('./lib/helpers')
+const { render, handle_input, handle_message, client_send_message, red, isHandshakeMessage, handle_handshake, isUpdateMessage, parse_json, green } = require('./lib/helpers')
 const conn = net.createConnection('./bank.sock')
 const clientId = randomUUID()
 let bank_is_open = false
@@ -38,7 +38,7 @@ handle_message(conn, message => {
     handle_handshake(conn, message, createHeader)
     return
   } else if (message && typeof message === 'string' && isUpdateMessage(message)) {
-    const { payload } = handle_update(message) || { payload: {} }
+    const { payload } = parse_json(message) || { payload: {} }
     bank_is_open = payload.bank_is_open
     if (payload.chat_log != null && payload.chat_log != undefined) {
       chat_log = payload.chat_log

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 const net = require('net')
-const { render, handle_input, handle_message, handle_handshake, isHandshakeMessage, client_send_message, handle_update, isUpdateMessage } = require('./lib/helpers')
+const { render, handle_input, handle_message, handle_handshake, isHandshakeMessage, client_send_message, parse_json, isUpdateMessage, isServerMessage } = require('./lib/helpers')
 const conn = net.createConnection('./bank.sock')
 let currently_serving = 0
 let currently_waiting = []
-let current_chat_log
+let current_chat_log = []
 
 
 function connection_ready() {
@@ -26,11 +26,12 @@ handle_input(line => {
 
 handle_message(conn, message => {
   let message_to_display = message
+  let server_message = ''
   if (message && typeof message === 'string' && isHandshakeMessage(message)) {
     handle_handshake(conn, message, createHeader)
     return
   } else if (message && typeof message === 'string' && isUpdateMessage(message)) {
-    const { payload } = handle_update(message) || { payload: {} }
+    const { payload } = parse_json(message) || { payload: {} }
     
     if (payload.chat_log != null && payload.chat_log != undefined) {
       current_chat_log = payload.chat_log
@@ -38,19 +39,35 @@ handle_message(conn, message => {
     if (payload.customers_waiting != null && payload.customers_waiting != undefined) {
       currently_waiting = payload.customers_waiting
     }
+    if (payload.currentCustomer != null && payload.currentCustomer != undefined) {
+      debugger
+      currently_serving = payload.currentCustomer
+    }
     
     message_to_display = ''
+  } else if (message && typeof message === 'string' && isServerMessage(message)) {
+    const { message } = parse_json(message) || { payload: {} }
   }
 
-  debugger
+  // debugger
 
-  // const screen = [
-  //   `The Bank is ${bank_is_open ? green('open') : red('closed')}.`
-	// ]
-
-	render([
+  const screen = [
     ...render_teller_header_info()
-	])
+	]
+
+  if (current_chat_log.length) {
+    const parsedChatLog = current_chat_log.map(log => {
+      const { clientId, message } = log || {}
+      const isMe = conn.clientId === clientId
+      const name = isMe ? 'you' : `${clientId.slice(-4)}`
+      
+      return `- (${name}) ${message}`
+    })
+    screen.push('[ CHAT ]', ...parsedChatLog, '')
+  }
+  // if ()
+
+	render(screen)
 	// console.log('Message received:', message)
 })
 
@@ -85,7 +102,6 @@ function createHeader () {
 }
 
 function render_teller_header_info() {
-  debugger
   return [
     currently_serving > 0 ? `You` : 'You are not serving any customers.',
     `You have ${currently_waiting.length} customers waiting in line.`,
